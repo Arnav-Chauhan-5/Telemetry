@@ -55,3 +55,16 @@ Telemetry/
 ├── server/          # Express + Mongoose API
 └── docker-compose.yml
 ```
+
+## CI
+
+A GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs automatically on every **push** and **pull request** to `main`. It includes three jobs:
+
+| Job | What it checks |
+|-----|----------------|
+| **Server** | `npm ci` + `npm test` in `/server` (Node 22) |
+| **Client** | `npm ci` + `npm run build` in `/client` (Node 22, Vite production build) |
+| **Docker** | `docker compose build` — confirms both Dockerfiles build successfully |
+
+All three jobs must pass before a PR can be merged.
+

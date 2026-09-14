@@ -4,7 +4,8 @@
   "description": "Telemetry — developer infrastructure and reliability platform (server)",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "echo \"no tests yet\" && exit 0"
   },
   "dependencies": {
     "cors": "^2.8.6",
