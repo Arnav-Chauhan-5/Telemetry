@@ -1,6 +1,7 @@
 const express = require("express");
 const Service = require("../models/Service");
 const requireAuth = require("../middleware/requireAuth");
+const { healthCheckQueue } = require("../lib/queue");
 
 const router = express.Router();
 
@@ -22,6 +23,13 @@ router.post("/", async (req, res) => {
       url,
       ...(checkIntervalSeconds != null && { checkIntervalSeconds }),
     });
+
+    // Schedule a repeatable health-check job via Job Scheduler (BullMQ v6+)
+    await healthCheckQueue.upsertJobScheduler(
+      service._id.toString(),
+      { every: service.checkIntervalSeconds * 1000 },
+      { data: { serviceId: service._id.toString() } },
+    );
 
     res.status(201).json(service);
   } catch (err) {
@@ -94,6 +102,9 @@ router.delete("/:id", async (req, res) => {
         .status(403)
         .json({ error: "You do not own this service" });
     }
+
+    // Remove the job scheduler before deleting the service (BullMQ v6+)
+    await healthCheckQueue.removeJobScheduler(service._id.toString());
 
     await service.deleteOne();
     res.json({ deleted: true });

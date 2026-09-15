@@ -1,0 +1,14 @@
+{
+  "name": "telemetry-worker",
+  "version": "1.0.0",
+  "description": "Telemetry — BullMQ worker for recurring health checks",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^6.0.0"
+  }
+}

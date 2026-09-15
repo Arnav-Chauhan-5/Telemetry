@@ -6,6 +6,11 @@ services:
     volumes:
       - mongo-data:/data/db
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   server:
     build: ./server
     ports:
@@ -13,8 +18,18 @@ services:
     environment:
       - MONGO_URI=mongodb://mongo:27017/telemetry
       - JWT_SECRET=docker-dev-secret-change-in-production
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - mongo
+      - redis
+
+  worker:
+    build: ./worker
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
 
   client:
     build: ./client
