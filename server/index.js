@@ -6,6 +6,10 @@ const mongoose = require("mongoose");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
+const authRoutes = require("./routes/auth");
+
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/telemetry";
 
@@ -16,6 +20,8 @@ mongoose
   .catch((err) => console.error("✗ MongoDB connection error:", err.message));
 
 // ── Routes ──────────────────────────────────────────────────────────
+app.use("/auth", authRoutes);
+
 app.get("/health", (_req, res) => {
   const mongoConnected = mongoose.connection.readyState === 1;
   res.json({ status: "ok", mongoConnected });

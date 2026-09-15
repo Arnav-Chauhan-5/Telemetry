@@ -1,40 +1,59 @@
-.health-card {
+/* ─────────────────────────────────────────────────────────────────────
+   App Layout
+   ───────────────────────────────────────────────────────────────────── */
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 40px 16px;
+  width: 100%;
+  max-width: 460px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Shared Card
+   ───────────────────────────────────────────────────────────────────── */
+
+.card {
   background: #1a1d27;
   border: 1px solid #2a2d3a;
   border-radius: 16px;
-  padding: 40px 48px;
-  max-width: 420px;
-  width: 90%;
+  padding: 32px 36px;
+  width: 100%;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-.health-card h1 {
-  font-size: 1.1rem;
+/* ─────────────────────────────────────────────────────────────────────
+   Health Card
+   ───────────────────────────────────────────────────────────────────── */
+
+.health-card h2 {
+  font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #7c8091;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
-
-/* ── Status rows ─────────────────────────────────────────────── */
 
 .status-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0;
+  padding: 12px 0;
   border-top: 1px solid #252834;
 }
 
 .status-label {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #9ca0af;
 }
 
 .status-value {
   font-family: "JetBrains Mono", "Fira Code", monospace;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 6px;
@@ -55,7 +74,9 @@
   background: rgba(245, 158, 11, 0.1);
 }
 
-/* ── Loading state ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Loading State
+   ───────────────────────────────────────────────────────────────────── */
 
 .loading {
   text-align: center;
@@ -64,25 +85,26 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .loading span {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
-/* ── Error state ─────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Error Card
+   ───────────────────────────────────────────────────────────────────── */
 
 .error-card {
-  background: #1a1d27;
-  border: 1px solid #3b1f1f;
-  border-radius: 16px;
-  padding: 40px 48px;
-  max-width: 420px;
-  width: 90%;
+  border-color: #3b1f1f;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .error-card .icon {
@@ -101,4 +123,193 @@
   color: #6b7280;
   font-size: 0.85rem;
   margin-top: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Auth Card — Tabs
+   ───────────────────────────────────────────────────────────────────── */
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: #14161e;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  color: #c0c4d0;
+}
+
+.tab.active {
+  background: #252834;
+  color: #e1e4eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Auth Card — Form
+   ───────────────────────────────────────────────────────────────────── */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-form label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ca0af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #e1e4eb;
+  background: #14161e;
+  border: 1px solid #2a2d3a;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-form input::placeholder {
+  color: #4b5060;
+}
+
+.auth-form input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Messages
+   ───────────────────────────────────────────────────────────────────── */
+
+.msg {
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.msg-error {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.15);
+}
+
+.msg-success {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Buttons
+   ───────────────────────────────────────────────────────────────────── */
+
+.btn {
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #252834;
+  color: #9ca0af;
+  border: 1px solid #2a2d3a;
+}
+
+.btn-secondary:hover {
+  background: #2d3040;
+  color: #e1e4eb;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Auth Profile (logged-in view)
+   ───────────────────────────────────────────────────────────────────── */
+
+.auth-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 16px rgba(99, 102, 241, 0.35);
+}
+
+.auth-profile h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e1e4eb;
+}
+
+.user-email {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.92rem;
+  color: #8b5cf6;
+}
+
+.user-since {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 8px;
 }

@@ -12,13 +12,11 @@ body {
   color: #e1e4eb;
   min-height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
 #root {
   width: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
 }

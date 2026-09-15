@@ -12,6 +12,7 @@ services:
       - "4000:4000"
     environment:
       - MONGO_URI=mongodb://mongo:27017/telemetry
+      - JWT_SECRET=docker-dev-secret-change-in-production
     depends_on:
       - mongo
 
