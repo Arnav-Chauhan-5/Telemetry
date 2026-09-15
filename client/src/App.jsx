@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "./App.css";
 
 const API = "http://localhost:4000";
@@ -11,16 +11,29 @@ function App() {
 
   /* ── Auth state ──────────────────────────────────────────────── */
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
-  const [user, setUser] = useState(null); // { email, createdAt }
+  const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [authSuccess, setAuthSuccess] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
-  const [authChecking, setAuthChecking] = useState(() => !!localStorage.getItem(TOKEN_KEY));
+  const [authChecking, setAuthChecking] = useState(
+    () => !!localStorage.getItem(TOKEN_KEY),
+  );
 
-  /* ── Form fields ─────────────────────────────────────────────── */
+  /* ── Auth form fields ────────────────────────────────────────── */
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(false);
+
+  /* ── Services state ──────────────────────────────────────────── */
+  const [services, setServices] = useState([]);
+  const [svcLoading, setSvcLoading] = useState(false);
+  const [svcError, setSvcError] = useState(null);
+
+  /* ── Add-service form fields ─────────────────────────────────── */
+  const [svcName, setSvcName] = useState("");
+  const [svcUrl, setSvcUrl] = useState("");
+  const [svcInterval, setSvcInterval] = useState("");
+  const [addingSvc, setAddingSvc] = useState(false);
 
   /* ── Fetch health on mount ───────────────────────────────────── */
   useEffect(() => {
@@ -60,7 +73,30 @@ function App() {
       .finally(() => setAuthChecking(false));
   }, [token]);
 
-  /* ── Submit handler (signup or login) ────────────────────────── */
+  /* ── Fetch services when user is set ─────────────────────────── */
+  const fetchServices = useCallback(async () => {
+    if (!token) return;
+    setSvcLoading(true);
+    setSvcError(null);
+    try {
+      const res = await fetch(`${API}/services`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to load services");
+      const data = await res.json();
+      setServices(data);
+    } catch {
+      setSvcError("Could not load services");
+    } finally {
+      setSvcLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user) fetchServices();
+  }, [user, fetchServices]);
+
+  /* ── Auth submit (signup or login) ───────────────────────────── */
   async function handleAuth(e) {
     e.preventDefault();
     setAuthError(null);
@@ -99,8 +135,67 @@ function App() {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    setServices([]);
     setAuthSuccess(null);
     setAuthError(null);
+  }
+
+  /* ── Add service ─────────────────────────────────────────────── */
+  async function handleAddService(e) {
+    e.preventDefault();
+    setSvcError(null);
+    setAddingSvc(true);
+
+    const body = { name: svcName, url: svcUrl };
+    if (svcInterval) body.checkIntervalSeconds = Number(svcInterval);
+
+    try {
+      const res = await fetch(`${API}/services`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSvcError(data.error || "Failed to add service");
+        return;
+      }
+
+      setSvcName("");
+      setSvcUrl("");
+      setSvcInterval("");
+      fetchServices();
+    } catch {
+      setSvcError("Could not reach server");
+    } finally {
+      setAddingSvc(false);
+    }
+  }
+
+  /* ── Delete service ──────────────────────────────────────────── */
+  async function handleDeleteService(id) {
+    setSvcError(null);
+    try {
+      const res = await fetch(`${API}/services/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setSvcError(data.error || "Failed to delete service");
+        return;
+      }
+
+      fetchServices();
+    } catch {
+      setSvcError("Could not reach server");
+    }
   }
 
   /* ── Render ──────────────────────────────────────────────────── */
@@ -138,9 +233,10 @@ function App() {
       {/* ── Auth Card ────────────────────────────────────────── */}
       <div className="card auth-card">
         {authChecking ? (
-          <div className="loading"><span>Restoring session…</span></div>
+          <div className="loading">
+            <span>Restoring session…</span>
+          </div>
         ) : user ? (
-          /* Logged-in state */
           <div className="auth-profile">
             <div className="avatar">{user.email[0].toUpperCase()}</div>
             <h2>Welcome back</h2>
@@ -153,7 +249,6 @@ function App() {
             </button>
           </div>
         ) : (
-          /* Auth form */
           <>
             <div className="auth-tabs">
               <button
@@ -203,7 +298,9 @@ function App() {
               />
 
               {authError && <p className="msg msg-error">{authError}</p>}
-              {authSuccess && <p className="msg msg-success">{authSuccess}</p>}
+              {authSuccess && (
+                <p className="msg msg-success">{authSuccess}</p>
+              )}
 
               <button
                 className="btn btn-primary"
@@ -220,6 +317,82 @@ function App() {
           </>
         )}
       </div>
+
+      {/* ── Services Card (only when logged in) ──────────────── */}
+      {user && (
+        <div className="card services-card">
+          <h2>Your Services</h2>
+
+          {/* Add-service form */}
+          <form className="svc-form" onSubmit={handleAddService}>
+            <div className="svc-form-row">
+              <input
+                id="svc-name"
+                type="text"
+                placeholder="Service name"
+                value={svcName}
+                onChange={(e) => setSvcName(e.target.value)}
+                required
+              />
+              <input
+                id="svc-url"
+                type="url"
+                placeholder="https://example.com/health"
+                value={svcUrl}
+                onChange={(e) => setSvcUrl(e.target.value)}
+                required
+              />
+              <input
+                id="svc-interval"
+                type="number"
+                placeholder="Interval (s)"
+                min={10}
+                value={svcInterval}
+                onChange={(e) => setSvcInterval(e.target.value)}
+                className="svc-interval-input"
+              />
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              type="submit"
+              disabled={addingSvc || !svcName.trim() || !svcUrl.trim()}
+            >
+              {addingSvc ? "Adding…" : "Add Service"}
+            </button>
+          </form>
+
+          {svcError && <p className="msg msg-error">{svcError}</p>}
+
+          {/* Service list */}
+          {svcLoading ? (
+            <div className="loading" style={{ marginTop: 16 }}>
+              <span>Loading services…</span>
+            </div>
+          ) : services.length === 0 ? (
+            <p className="svc-empty">
+              No services yet — add one above to get started.
+            </p>
+          ) : (
+            <ul className="svc-list">
+              {services.map((svc) => (
+                <li key={svc._id} className="svc-item">
+                  <div className="svc-info">
+                    <span className="svc-name">{svc.name}</span>
+                    <span className="svc-url">{svc.url}</span>
+                  </div>
+                  <button
+                    className="btn-delete"
+                    title="Delete service"
+                    onClick={() => handleDeleteService(svc._id)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
