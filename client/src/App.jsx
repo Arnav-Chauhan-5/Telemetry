@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import "./App.css";
 
 const API = "http://localhost:4000";
+const TOKEN_KEY = "telemetry_token";
 
 function App() {
   /* ── Health check state ──────────────────────────────────────── */
@@ -9,11 +10,12 @@ function App() {
   const [healthError, setHealthError] = useState(null);
 
   /* ── Auth state ──────────────────────────────────────────────── */
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(null); // { email, createdAt }
   const [authError, setAuthError] = useState(null);
   const [authSuccess, setAuthSuccess] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(() => !!localStorage.getItem(TOKEN_KEY));
 
   /* ── Form fields ─────────────────────────────────────────────── */
   const [email, setEmail] = useState("");
@@ -34,9 +36,13 @@ function App() {
   /* ── Fetch /auth/me whenever token changes ───────────────────── */
   useEffect(() => {
     if (!token) {
+      localStorage.removeItem(TOKEN_KEY);
       setUser(null);
+      setAuthChecking(false);
       return;
     }
+
+    localStorage.setItem(TOKEN_KEY, token);
 
     fetch(`${API}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -50,7 +56,8 @@ function App() {
         setUser(null);
         setToken(null);
         setAuthError("Session expired — please log in again");
-      });
+      })
+      .finally(() => setAuthChecking(false));
   }, [token]);
 
   /* ── Submit handler (signup or login) ────────────────────────── */
@@ -89,6 +96,7 @@ function App() {
 
   /* ── Logout ──────────────────────────────────────────────────── */
   function handleLogout() {
+    localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
     setAuthSuccess(null);
@@ -129,7 +137,9 @@ function App() {
 
       {/* ── Auth Card ────────────────────────────────────────── */}
       <div className="card auth-card">
-        {user ? (
+        {authChecking ? (
+          <div className="loading"><span>Restoring session…</span></div>
+        ) : user ? (
           /* Logged-in state */
           <div className="auth-profile">
             <div className="avatar">{user.email[0].toUpperCase()}</div>
