@@ -385,7 +385,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   padding: 12px 0;
   border-top: 1px solid #252834;
 }
@@ -393,8 +393,33 @@
 .svc-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
+  flex: 1;
+}
+
+.svc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.svc-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4b5060; /* unknown */
+  flex-shrink: 0;
+}
+
+.svc-status-dot.up {
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+
+.svc-status-dot.down {
+  background: #f87171;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
 }
 
 .svc-name {
@@ -413,6 +438,34 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-left: 18px; /* align with text after dot */
+}
+
+.svc-stats {
+  display: flex;
+  gap: 16px;
+  margin-right: 8px;
+}
+
+.svc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+  text-align: right;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+}
+
+.stat-val {
+  font-size: 0.85rem;
+  color: #e1e4eb;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
 .btn-delete {

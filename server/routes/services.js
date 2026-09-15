@@ -1,5 +1,6 @@
 const express = require("express");
 const Service = require("../models/Service");
+const MonitoringResult = require("../models/MonitoringResult");
 const requireAuth = require("../middleware/requireAuth");
 const { healthCheckQueue } = require("../lib/queue");
 
@@ -110,6 +111,84 @@ router.delete("/:id", async (req, res) => {
     res.json({ deleted: true });
   } catch (err) {
     console.error("Delete service error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+// ── GET /services/:id/results — list recent results ─────────────────
+router.get("/:id/results", async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    if (service.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: "You do not own this service" });
+    }
+
+    const results = await MonitoringResult.find({ serviceId: service._id })
+      .sort({ checkedAt: -1 })
+      .limit(20);
+
+    res.json(results);
+  } catch (err) {
+    console.error("List results error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+// ── GET /services/:id/status — get live status and uptime ─────────────
+router.get("/:id/status", async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    if (service.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: "You do not own this service" });
+    }
+
+    // 1. Get the single most recent result for current status
+    const latestResult = await MonitoringResult.findOne({ serviceId: service._id })
+      .sort({ checkedAt: -1 });
+
+    // 2. Calculate uptime percentage over the last 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    // Use aggregation to count total and "up" results efficiently
+    const stats = await MonitoringResult.aggregate([
+      { 
+        $match: { 
+          serviceId: service._id,
+          checkedAt: { $gte: oneDayAgo }
+        } 
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          up: {
+            $sum: { $cond: [{ $eq: ["$status", "up"] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    let uptimePercentage = null;
+    if (stats.length > 0 && stats[0].total > 0) {
+      uptimePercentage = (stats[0].up / stats[0].total) * 100;
+    }
+
+    res.json({
+      currentStatus: latestResult ? latestResult.status : "unknown",
+      lastCheckedAt: latestResult ? latestResult.checkedAt : null,
+      lastResponseTime: latestResult ? latestResult.responseTime : null,
+      uptimePercentage
+    });
+  } catch (err) {
+    console.error("Get status error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

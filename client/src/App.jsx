@@ -4,6 +4,15 @@ import "./App.css";
 const API = "http://localhost:4000";
 const TOKEN_KEY = "telemetry_token";
 
+function formatRelativeTime(dateString) {
+  if (!dateString) return "—";
+  const diff = Math.floor((new Date() - new Date(dateString)) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 function App() {
   /* ── Health check state ──────────────────────────────────────── */
   const [health, setHealth] = useState(null);
@@ -28,6 +37,9 @@ function App() {
   const [services, setServices] = useState([]);
   const [svcLoading, setSvcLoading] = useState(false);
   const [svcError, setSvcError] = useState(null);
+
+  /* ── Status polling state ────────────────────────────────────── */
+  const [statuses, setStatuses] = useState({});
 
   /* ── Add-service form fields ─────────────────────────────────── */
   const [svcName, setSvcName] = useState("");
@@ -96,6 +108,40 @@ function App() {
     if (user) fetchServices();
   }, [user, fetchServices]);
 
+  /* ── Poll service statuses ─────────────────────────────────────── */
+  useEffect(() => {
+    if (!token || !user || services.length === 0) return;
+
+    let mounted = true;
+    
+    async function fetchStatus(id) {
+      try {
+        const res = await fetch(`${API}/services/${id}/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setStatuses((prev) => ({ ...prev, [id]: data }));
+        }
+      } catch (e) {
+        // ignore network errors for polling
+      }
+    }
+
+    // Initial fetch for all
+    services.forEach(svc => fetchStatus(svc._id));
+
+    // Poll every 10 seconds
+    const interval = setInterval(() => {
+      services.forEach(svc => fetchStatus(svc._id));
+    }, 10000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [token, user, services]);
+
   /* ── Auth submit (signup or login) ───────────────────────────── */
   async function handleAuth(e) {
     e.preventDefault();
@@ -136,6 +182,7 @@ function App() {
     setToken(null);
     setUser(null);
     setServices([]);
+    setStatuses({});
     setAuthSuccess(null);
     setAuthError(null);
   }
@@ -377,8 +424,25 @@ function App() {
               {services.map((svc) => (
                 <li key={svc._id} className="svc-item">
                   <div className="svc-info">
-                    <span className="svc-name">{svc.name}</span>
+                    <div className="svc-header">
+                      <span className={`svc-status-dot ${statuses[svc._id]?.currentStatus || 'unknown'}`}></span>
+                      <span className="svc-name">{svc.name}</span>
+                    </div>
                     <span className="svc-url">{svc.url}</span>
+                  </div>
+                  <div className="svc-stats">
+                    <div className="svc-stat">
+                      <span className="stat-label">Uptime</span>
+                      <span className="stat-val">{statuses[svc._id]?.uptimePercentage != null ? `${statuses[svc._id].uptimePercentage.toFixed(1)}%` : "—"}</span>
+                    </div>
+                    <div className="svc-stat">
+                      <span className="stat-label">Response</span>
+                      <span className="stat-val">{statuses[svc._id]?.lastResponseTime != null ? `${statuses[svc._id].lastResponseTime}ms` : "—"}</span>
+                    </div>
+                    <div className="svc-stat">
+                      <span className="stat-label">Checked</span>
+                      <span className="stat-val">{formatRelativeTime(statuses[svc._id]?.lastCheckedAt)}</span>
+                    </div>
                   </div>
                   <button
                     className="btn-delete"
