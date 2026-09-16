@@ -36,6 +36,16 @@ const MonitoringResult = mongoose.model(
   monitoringResultSchema,
 );
 
+const incidentSchema = new mongoose.Schema({
+  serviceId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  status: { type: String, enum: ["investigating", "resolved"], default: "investigating" },
+  startedAt: { type: Date, required: true },
+  resolvedAt: { type: Date, default: null },
+  consecutiveFailures: { type: Number, default: 3 },
+  downtimeSeconds: { type: Number, default: null },
+});
+const Incident = mongoose.model("Incident", incidentSchema);
+
 // ── Database Connection ───────────────────────────────────────────
 mongoose
   .connect(MONGO_URI)
@@ -93,6 +103,35 @@ const worker = new Worker(
     console.log(
       `[health-check] serviceId=${serviceId} url=${service.url} status=${status} statusCode=${statusCode} time=${responseTime}ms`,
     );
+
+    // 5. Incident Logic
+    const openIncident = await Incident.findOne({ serviceId, status: "investigating" });
+
+    if (status === "down") {
+      if (!openIncident) {
+        // check last 3 results
+        const last3 = await MonitoringResult.find({ serviceId }).sort({ checkedAt: -1 }).limit(3);
+        if (last3.length === 3 && last3.every(r => r.status === "down")) {
+          // the first of those 3 failures is the oldest one, so last3[2]
+          const startedAt = last3[2].checkedAt;
+          await Incident.create({
+            serviceId,
+            status: "investigating",
+            startedAt,
+            consecutiveFailures: 3
+          });
+          console.log(`[incident] Opened incident for serviceId=${serviceId}`);
+        }
+      }
+    } else if (status === "up") {
+      if (openIncident) {
+        openIncident.status = "resolved";
+        openIncident.resolvedAt = new Date();
+        openIncident.downtimeSeconds = Math.round((openIncident.resolvedAt - openIncident.startedAt) / 1000);
+        await openIncident.save();
+        console.log(`[incident] Resolved incident for serviceId=${serviceId}, downtime=${openIncident.downtimeSeconds}s`);
+      }
+    }
   },
   { connection },
 );

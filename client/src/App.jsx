@@ -40,6 +40,7 @@ function App() {
 
   /* ── Status polling state ────────────────────────────────────── */
   const [statuses, setStatuses] = useState({});
+  const [incidents, setIncidents] = useState({});
 
   /* ── Add-service form fields ─────────────────────────────────── */
   const [svcName, setSvcName] = useState("");
@@ -116,12 +117,20 @@ function App() {
     
     async function fetchStatus(id) {
       try {
-        const res = await fetch(`${API}/services/${id}/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok && mounted) {
-          const data = await res.json();
-          setStatuses((prev) => ({ ...prev, [id]: data }));
+        const [statusRes, incRes] = await Promise.all([
+          fetch(`${API}/services/${id}/status`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API}/services/${id}/incidents`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+
+        if (mounted) {
+          if (statusRes.ok) {
+            const data = await statusRes.json();
+            setStatuses((prev) => ({ ...prev, [id]: data }));
+          }
+          if (incRes.ok) {
+            const data = await incRes.json();
+            setIncidents((prev) => ({ ...prev, [id]: data }));
+          }
         }
       } catch (e) {
         // ignore network errors for polling
@@ -183,6 +192,7 @@ function App() {
     setUser(null);
     setServices([]);
     setStatuses({});
+    setIncidents({});
     setAuthSuccess(null);
     setAuthError(null);
   }
@@ -429,6 +439,11 @@ function App() {
                       <span className="svc-name">{svc.name}</span>
                     </div>
                     <span className="svc-url">{svc.url}</span>
+                    {incidents[svc._id]?.find(i => i.status === "investigating") && (
+                      <div className="svc-incident-alert">
+                        ⚠ Incident: investigating since {new Date(incidents[svc._id].find(i => i.status === "investigating").startedAt).toLocaleTimeString()}
+                      </div>
+                    )}
                   </div>
                   <div className="svc-stats">
                     <div className="svc-stat">
@@ -457,6 +472,39 @@ function App() {
           )}
         </div>
       )}
+
+      {/* ── Incidents List ────────────────────────────────────────── */}
+      {user && (() => {
+        const allIncidents = services
+          .flatMap(svc => (incidents[svc._id] || []).map(inc => ({ ...inc, serviceName: svc.name })))
+          .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+
+        if (allIncidents.length === 0) return null;
+
+        return (
+          <div className="card incidents-card">
+            <h2>Incident History</h2>
+            <ul className="incidents-list">
+              {allIncidents.map(inc => (
+                <li key={inc._id} className="incident-item">
+                  <div className="inc-header">
+                    <span className={`inc-status ${inc.status}`}>{inc.status}</span>
+                    <span className="inc-svc-name">{inc.serviceName}</span>
+                  </div>
+                  <div className="inc-details">
+                    Started: {new Date(inc.startedAt).toLocaleString()}
+                    {inc.status === "resolved" ? (
+                      <> &bull; Resolved: {new Date(inc.resolvedAt).toLocaleString()} &bull; Downtime: {inc.downtimeSeconds}s</>
+                    ) : (
+                      <> &bull; Ongoing</>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
     </div>
   );
 }

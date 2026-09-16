@@ -1,6 +1,7 @@
 const express = require("express");
 const Service = require("../models/Service");
 const MonitoringResult = require("../models/MonitoringResult");
+const Incident = require("../models/Incident");
 const requireAuth = require("../middleware/requireAuth");
 const { healthCheckQueue } = require("../lib/queue");
 
@@ -189,6 +190,28 @@ router.get("/:id/status", async (req, res) => {
     });
   } catch (err) {
     console.error("Get status error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+// ── GET /services/:id/incidents — list incidents for a service ────────
+router.get("/:id/incidents", async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    if (service.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: "You do not own this service" });
+    }
+
+    const incidents = await Incident.find({ serviceId: service._id })
+      .sort({ startedAt: -1 });
+
+    res.json(incidents);
+  } catch (err) {
+    console.error("List incidents error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
