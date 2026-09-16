@@ -10,6 +10,7 @@ app.use(express.json());
 
 const authRoutes = require("./routes/auth");
 const serviceRoutes = require("./routes/services");
+const statusRoutes = require("./routes/status");
 
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/telemetry";
@@ -23,6 +24,7 @@ mongoose
 // ── Routes ──────────────────────────────────────────────────────────
 app.use("/auth", authRoutes);
 app.use("/services", serviceRoutes);
+app.use("/status", statusRoutes);
 
 app.get("/health", (_req, res) => {
   const mongoConnected = mongoose.connection.readyState === 1;
