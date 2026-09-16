@@ -6,11 +6,57 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/telemetry";
 
+const nodemailer = require("nodemailer");
+
+// ── Mail Configuration ────────────────────────────────────────────
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = process.env.SMTP_PORT;
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const NOTIFY_EMAIL_FROM = process.env.NOTIFY_EMAIL_FROM || "noreply@telemetry.local";
+
+let mailTransporter = null;
+if (SMTP_HOST && SMTP_USER) {
+  mailTransporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: parseInt(SMTP_PORT) || 587,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+}
+
+async function sendNotificationEmail(to, subject, text) {
+  if (!mailTransporter) {
+    console.warn("Mail transporter not configured, skipping email.");
+    return;
+  }
+  try {
+    await mailTransporter.sendMail({
+      from: NOTIFY_EMAIL_FROM,
+      to,
+      subject,
+      text,
+    });
+    console.log(`[email] Sent to ${to}: ${subject}`);
+  } catch (err) {
+    console.error(`[email] Failed to send email to ${to}:`, err.message);
+  }
+}
+
 // ── Models ────────────────────────────────────────────────────────
 // Redefining just what we need for the worker to avoid sharing files
 // between Docker build contexts for now.
+const userSchema = new mongoose.Schema({
+  email: String,
+});
+const User = mongoose.model("User", userSchema);
+
 const serviceSchema = new mongoose.Schema({
   url: String,
+  name: String,
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 const Service = mongoose.model("Service", serviceSchema);
 
@@ -63,7 +109,7 @@ const worker = new Worker(
     const { serviceId } = job.data;
     
     // 1. Look up the service
-    const service = await Service.findById(serviceId);
+    const service = await Service.findById(serviceId).populate("userId");
     if (!service) {
       console.warn(`Service ${serviceId} not found, skipping check.`);
       return;
@@ -121,6 +167,14 @@ const worker = new Worker(
             consecutiveFailures: 3
           });
           console.log(`[incident] Opened incident for serviceId=${serviceId}`);
+          
+          if (service.userId && service.userId.email) {
+            await sendNotificationEmail(
+              service.userId.email,
+              `[Telemetry] ${service.name || 'Service'} is down`,
+              `Your service ${service.name || 'Service'} (${service.url}) went down at ${startedAt.toISOString()}.`
+            );
+          }
         }
       }
     } else if (status === "up") {
@@ -130,6 +184,14 @@ const worker = new Worker(
         openIncident.downtimeSeconds = Math.round((openIncident.resolvedAt - openIncident.startedAt) / 1000);
         await openIncident.save();
         console.log(`[incident] Resolved incident for serviceId=${serviceId}, downtime=${openIncident.downtimeSeconds}s`);
+        
+        if (service.userId && service.userId.email) {
+          await sendNotificationEmail(
+            service.userId.email,
+            `[Telemetry] ${service.name || 'Service'} recovered`,
+            `Your service ${service.name || 'Service'} (${service.url}) has recovered. It was down for ${openIncident.downtimeSeconds} seconds.`
+          );
+        }
       }
     }
   },

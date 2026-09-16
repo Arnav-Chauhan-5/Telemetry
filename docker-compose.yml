@@ -25,6 +25,7 @@ services:
 
   worker:
     build: ./worker
+    env_file: ./server/.env
     environment:
       - REDIS_URL=redis://redis:6379
       - MONGO_URI=mongodb://mongo:27017/telemetry
